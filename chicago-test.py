@@ -121,7 +121,7 @@ def main(path: str):
             # === Parámetros de acceso a IBM COS (rellena con tus datos) ===
             BUCKET = "bucket-21gdw1x1ehp98cp"
             NOMBRE_OBJETO = os.path.basename(ruta_csv)
-            APIKEY = "dkVWFL9bHnpwy4B22DNxJ4mnSV_NDmGG9eHBMcQMPlOL"
+            APIKEY = "1bKbU1iW4RIpb5Yv8kCaL4nNTVpEy0-gIuZxpCY2EhO0"
             RESOURCE_INSTANCE_ID = "crn:v1:bluemix:public:cloud-object-storage:global:a/a0d311a778b1491bbc7dab0f8108ec44:9510a7ed-4816-41c7-b7a2-7d63a9f6113f::"
             # === EL endpoint es el que se usa para subir a COS y debe ser PUBLICO ===
             ENDPOINT = "https://s3.us-east.cloud-object-storage.appdomain.cloud"
