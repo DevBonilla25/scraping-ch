@@ -87,15 +87,19 @@ def guardar_csv(df, path, fecha):
         return None
 
 def subir_a_cos(ruta_archivo, bucket, nombre_objeto, apikey, resource_instance_id, endpoint):
-    cos = ibm_boto3.client("s3",
-        ibm_api_key_id=apikey,
-        ibm_service_instance_id=resource_instance_id,
-        config=Config(signature_version="oauth"),
-        endpoint_url=endpoint
-    )
-    with open(ruta_archivo, "rb") as archivo:
-        cos.upload_fileobj(archivo, bucket, nombre_objeto)
-    print(f"Archivo subido a COS: {nombre_objeto}")
+    try:
+        print("Intentando subir a COS...")
+        cos = ibm_boto3.client("s3",
+            ibm_api_key_id=apikey,
+            ibm_service_instance_id=resource_instance_id,
+            config=Config(signature_version="oauth"),
+            endpoint_url=endpoint
+        )
+        with open(ruta_archivo, "rb") as archivo:
+            cos.upload_fileobj(archivo, bucket, nombre_objeto)
+        print(f"Archivo subido a COS: {nombre_objeto}")
+    except Exception as e:
+        print(f"Error al subir a COS: {e}")
 
 def main(path: str):
     """Ejecuta el flujo principal: descarga de datos, inserción en la base, y guardado como CSV si hay nuevos registros.
