@@ -123,7 +123,7 @@ def main(path: str):
             NOMBRE_OBJETO = os.path.basename(ruta_csv)
             APIKEY = "dkVWFL9bHnpwy4B22DNxJ4mnSV_NDmGG9eHBMcQMPlOL"
             RESOURCE_INSTANCE_ID = "crn:v1:bluemix:public:cloud-object-storage:global:a/a0d311a778b1491bbc7dab0f8108ec44:9510a7ed-4816-41c7-b7a2-7d63a9f6113f::"
-            ENDPOINT = "https://control.cloud-object-storage.cloud.ibm.com/v2/endpoints"
+            ENDPOINT = "https://s3.private.us-east.cloud-object-storage.appdomain.cloud"
             # ============================================================
             subir_a_cos(ruta_csv, BUCKET, NOMBRE_OBJETO, APIKEY, RESOURCE_INSTANCE_ID, ENDPOINT)
         else:
