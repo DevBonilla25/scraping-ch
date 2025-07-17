@@ -24,7 +24,7 @@ def obtener_datos():
         response.raise_for_status()
         data = response.json()
     except Exception as e:
-        print(f"Error al obtener datos de la API: {e}")
+        print(f"Problemas al obtener datos de la API: {e}")
         return pd.DataFrame()
 
     person_data = [
@@ -83,7 +83,7 @@ def guardar_csv(df, path, fecha):
         print(f"Datos exportados a {ruta}")
         return ruta
     except Exception as e:
-        print(f"Error al guardar CSV: {e}")
+        print(f"Problemas al guardar CSV: {e}")
         return None
 
 def subir_a_cos(ruta_archivo, bucket, nombre_objeto, apikey, resource_instance_id, endpoint):
@@ -99,7 +99,7 @@ def subir_a_cos(ruta_archivo, bucket, nombre_objeto, apikey, resource_instance_i
             cos.upload_fileobj(archivo, bucket, nombre_objeto)
         print(f"Archivo subido a COS: {nombre_objeto}")
     except Exception as e:
-        print(f"Error al subir a COS: {e}")
+        print(f"Problemas al subir a COS: {e}")
 
 def main(path: str):
     """Ejecuta el flujo principal: descarga de datos, inserción en la base, y guardado como CSV si hay nuevos registros.
@@ -124,7 +124,7 @@ def main(path: str):
             APIKEY = "xv7bbYwNNuBMWqunqtY8hnq0xoKc7ENwb4HN7hkYLvyJ"
             RESOURCE_INSTANCE_ID = "crn:v1:bluemix:public:cloud-object-storage:global:a/a0d311a778b1491bbc7dab0f8108ec44:9510a7ed-4816-41c7-b7a2-7d63a9f6113f::"
             # === EL endpoint es el que se usa para subir a COS y debe ser PUBLICO ===
-            ENDPOINT = "https://s3.us-east.cloud-object-storage.appdomain.cloud"
+            ENDPOINT = "https://s3.us-south.cloud-object-storage.appdomain.cloud"
             # ============================================================
             subir_a_cos(ruta_csv, BUCKET, NOMBRE_OBJETO, APIKEY, RESOURCE_INSTANCE_ID, ENDPOINT)
         else:
