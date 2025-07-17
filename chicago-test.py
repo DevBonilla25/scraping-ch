@@ -4,6 +4,8 @@ import psycopg2
 from psycopg2 import sql, extras
 from datetime import datetime
 import os
+import ibm_boto3
+from ibm_botocore.client import Config
 
 
 API_URL = "https://data.cityofchicago.org/resource/u6pd-qa9d.json"
@@ -83,7 +85,17 @@ def guardar_csv(df, path, fecha):
     except Exception as e:
         print(f"Error al guardar CSV: {e}")
         return None
-""""""
+
+def subir_a_cos(ruta_archivo, bucket, nombre_objeto, apikey, resource_instance_id, endpoint):
+    cos = ibm_boto3.client("s3",
+        ibm_api_key_id=apikey,
+        ibm_service_instance_id=resource_instance_id,
+        config=Config(signature_version="oauth"),
+        endpoint_url=endpoint
+    )
+    with open(ruta_archivo, "rb") as archivo:
+        cos.upload_fileobj(archivo, bucket, nombre_objeto)
+    print(f"Archivo subido a COS: {nombre_objeto}")
 
 def main(path: str):
     """Ejecuta el flujo principal: descarga de datos, inserción en la base, y guardado como CSV si hay nuevos registros.
@@ -102,6 +114,14 @@ def main(path: str):
             with open(ruta_txt, 'w') as f:
                 f.write(ruta_csv + '\n')
                 print("Ruta de csv guardado en text.")
+            # === Parámetros de acceso a IBM COS (rellena con tus datos) ===
+            BUCKET = "rel8ed-storage"
+            NOMBRE_OBJETO = os.path.basename(ruta_csv)
+            APIKEY = "dkVWFL9bHnpwy4B22DNxJ4mnSV_NDmGG9eHBMcQMPlOL"
+            RESOURCE_INSTANCE_ID = "crn:v1:bluemix:public:cloud-object-storage:global:a/a0d311a778b1491bbc7dab0f8108ec44:9510a7ed-4816-41c7-b7a2-7d63a9f6113f::"
+            ENDPOINT = "https://control.cloud-object-storage.cloud.ibm.com/v2/endpoints"
+            # ============================================================
+            subir_a_cos(ruta_csv, BUCKET, NOMBRE_OBJETO, APIKEY, RESOURCE_INSTANCE_ID, ENDPOINT)
         else:
             print("No hay datos nuevos para guardar en CSV.")
     else:
