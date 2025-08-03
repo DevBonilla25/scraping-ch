@@ -17,8 +17,10 @@ DB_PASSWORD = os.getenv('DB_PASSWORD', 'pg3R1f6p9kTOyDX6Izq53Th3eP5n9wIY')
 API_URL = "https://data.cityofchicago.org/resource/85ca-t3if.json"
 TABLE_NAME = 'chicago_crashes_traffic'
 
-# Definición de tipos SQL para las columnas
+# Tipos específicos por columna en la tabla de traffic crashes
 SQL_TYPES = {
+    """ Esta es la configuración de los tipos de datos de las columnas de la tabla de Chicago Crashes Traffic. """
+
     'crash_record_id': 'TEXT',
     'crash_date': 'TIMESTAMP',
     'posted_speed_limit': 'INTEGER',
@@ -81,7 +83,6 @@ def obtener_conexion_db():
         print(f"Error al conectar con la base de datos: {e}")
         return None
 
-
 def insert_all_to_database(df, table_name):
     """
     Inserta todos los registros del DataFrame en la base de datos, sin filtrar duplicados.
@@ -95,6 +96,7 @@ def insert_all_to_database(df, table_name):
     if not conn:
         print("No se pudo establecer conexión con la base de datos.")
         return 0
+
 
     df.columns = df.columns.str.lower()
     columns = df.columns.tolist()
@@ -141,10 +143,15 @@ def insert_all_to_database(df, table_name):
 
     except Exception as e:
         print(f"Error al insertar en la base de datos: {e}")
-        conn.rollback()
         return 0
-    finally:
-        conn.close()
+
+def insert_db_full_crashes(path):
+    ruta_txt = os.path.join(path, "csv_path_traffic.txt")
+    with open(ruta_txt, "r", encoding="utf-8") as f:
+        primera_linea = f.readline().strip()
+        # Cargar el CSV en un DataFrame
+        df = pd.read_csv(primera_linea, sep=';')
+        insert_all_to_database(df, "chicago_crashes_traffic")
 
 
 def obtener_datos():
@@ -239,7 +246,6 @@ def guardar_csv(df, path, fecha):
 def subir_a_cos(ruta_archivo, bucket, nombre_objeto, apikey, resource_instance_id, endpoint, carpeta_destino="Chicago/Traffic"):
     """
     Sube un archivo a IBM Cloud Object Storage en una carpeta específica.
-    Si la carpeta no existe, la crea automáticamente.
     
     Args:
         ruta_archivo: Ruta local del archivo a subir
@@ -262,32 +268,7 @@ def subir_a_cos(ruta_archivo, bucket, nombre_objeto, apikey, resource_instance_i
         # Construir la ruta completa en COS (carpeta/archivo)
         ruta_completa = f"{carpeta_destino}/{nombre_objeto}"
         
-        # Verificar si la carpeta existe, si no, crearla
-        try:
-            # Intentar listar objetos en la carpeta para verificar si existe
-            response = cos.list_objects_v2(
-                Bucket=bucket,
-                Prefix=f"{carpeta_destino}/",
-                MaxKeys=1
-            )
-            
-            # Si no hay objetos en la carpeta, crear un archivo vacío para "crear" la carpeta
-            if 'Contents' not in response or len(response['Contents']) == 0:
-                print(f"Creando carpeta '{carpeta_destino}' en COS...")
-                cos.put_object(
-                    Bucket=bucket,
-                    Key=f"{carpeta_destino}/.keep",
-                    Body=""
-                )
-                print(f"Carpeta '{carpeta_destino}' creada exitosamente.")
-            else:
-                print(f"Carpeta '{carpeta_destino}' ya existe en COS.")
-                
-        except Exception as e:
-            print(f"Error al verificar/crear carpeta: {e}")
-            # Continuar con la subida del archivo de todas formas
-        
-        # Subir el archivo a la carpeta especificada
+        # Subir el archivo directamente
         with open(ruta_archivo, "rb") as archivo:
             cos.upload_fileobj(archivo, bucket, ruta_completa)
         
@@ -327,9 +308,7 @@ def main(path: str):
                 RESOURCE_INSTANCE_ID = "crn:v1:bluemix:public:cloud-object-storage:global:a/a0d311a778b1491bbc7dab0f8108ec44:9510a7ed-4816-41c7-b7a2-7d63a9f6113f::"
                 # === EL endpoint es el que se usa para subir a COS y debe ser PUBLICO ===
                 ENDPOINT = "https://s3.us-south.cloud-object-storage.appdomain.cloud"
-                # === Carpeta donde guardar los archivos en COS ===
-                CARPETA_DESTINO = "Chicago/Traffic"
-                # ============================================================
+                
                 subir_a_cos(ruta_csv, BUCKET, NOMBRE_OBJETO, APIKEY, RESOURCE_INSTANCE_ID, ENDPOINT, CARPETA_DESTINO)
             else:
                 print("No se pudo guardar el archivo CSV.")
@@ -344,3 +323,6 @@ if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
     storage_path = os.path.join(current_dir, "storage")
     main(path=storage_path)
+    
+    # Alternativa: insertar desde CSV existente
+    # insert_db_full_crashes("/home/data/chicago/traffic")
