@@ -228,6 +228,12 @@ def obtener_datos():
     if 'date_police_notified' in df.columns:
         df['date_police_notified'] = pd.to_datetime(df['date_police_notified'], errors='coerce')
     
+    # Procesar campos que pueden ser diccionarios y convertirlos a strings caso de longitud y latitud y coordenadas
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            # Convertir diccionarios a strings
+            df[col] = df[col].apply(lambda x: str(x) if isinstance(x, dict) else x)
+    
     return df
 
 
