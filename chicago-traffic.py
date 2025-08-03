@@ -173,7 +173,7 @@ def obtener_datos():
     except Exception as e:
         print(f"Error al obtener datos de la API: {e}")
         return pd.DataFrame()
-
+    
     # Procesar y estructurar los datos de accidentes de tráfico
     traffic_data = [
         {
@@ -288,10 +288,10 @@ def main(path: str):
     df = obtener_datos()
     if not df.empty:
         # Insertar datos en la base de datos
-        inserted_count = insert_all_to_database(df, TABLE_NAME)
+        # inserted_count = insert_all_to_database(df, TABLE_NAME)
         
         # Guardar CSV solo si se insertaron datos
-        if inserted_count > 0:
+        #if inserted_count > 0:
             ruta_csv = guardar_csv(df, path, datetime.now())
             if ruta_csv:
                 ruta_txt = os.path.join(path, 'csv_path_traffic.txt')
