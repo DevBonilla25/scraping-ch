@@ -19,10 +19,36 @@ TABLE_NAME = 'chicago_crashes_traffic'
 
 # Definición de tipos SQL para las columnas
 SQL_TYPES = {
+    'crash_record_id': 'TEXT',
     'crash_date': 'TIMESTAMP',
-    'date_police_notified': 'TIMESTAMP',
     'posted_speed_limit': 'INTEGER',
+    'traffic_control_device': 'TEXT',
+    'device_condition': 'TEXT',
+    'weather_condition': 'TEXT',
+    'lighting_condition': 'TEXT',
+    'first_crash_type': 'TEXT',
+    'trafficway_type': 'TEXT',
+    'alignment': 'TEXT',
+    'roadway_surface_cond': 'TEXT',
+    'road_defect': 'TEXT',
+    'crash_type': 'TEXT',
+    'intersection_related_i': 'TEXT',
+    'hit_and_run_i': 'TEXT',
+    'damage': 'TEXT',
+    'prim_contributory_cause': 'TEXT',
+    'sec_contributory_cause': 'TEXT',
+    'street_no': 'INTEGER',
+    'street_direction': 'TEXT',
+    'street_name': 'TEXT',
+    'beat_of_occurrence': 'TEXT',
+    'photos_taken_i': 'TEXT',
+    'statements_taken_i': 'TEXT',
+    'dooring_i': 'TEXT',
+    'work_zone_i': 'TEXT',
+    'work_zone_type': 'TEXT',
+    'workers_present_i': 'TEXT',
     'num_units': 'INTEGER',
+    'most_severe_injury': 'TEXT',
     'injuries_total': 'INTEGER',
     'injuries_fatal': 'INTEGER',
     'injuries_incapacitating': 'INTEGER',
@@ -33,17 +59,11 @@ SQL_TYPES = {
     'crash_hour': 'INTEGER',
     'crash_day_of_week': 'INTEGER',
     'crash_month': 'INTEGER',
-    'latitude': 'DECIMAL(10,8)',
-    'longitude': 'DECIMAL(11,8)',
-    'street_no': 'INTEGER',
-    'beat_of_occurrence': 'INTEGER',
-    'photos_taken_i': 'BOOLEAN',
-    'statements_taken_i': 'BOOLEAN',
-    'dooring_i': 'BOOLEAN',
-    'work_zone_i': 'BOOLEAN',
-    'workers_present_i': 'BOOLEAN',
-    'intersection_related_i': 'BOOLEAN',
-    'hit_and_run_i': 'BOOLEAN',
+    'latitude': 'DOUBLE PRECISION',
+    'longitude': 'DOUBLE PRECISION',
+    'location': 'TEXT',
+    'report_type': 'TEXT',
+    'date_police_notified': 'TIMESTAMP'
 }
 
 def obtener_conexion_db():
@@ -130,13 +150,7 @@ def insert_all_to_database(df, table_name):
 def obtener_datos():
     """
     Consulta la API de accidentes y transforma la respuesta JSON en un DataFrame.
-    Realiza un GET a la API
-    Convierte el JSON a DataFrame
-    Filtra columnas no válidas como identificadores SQL
-    Convierte fechas (crash_date, date_police_notified)
-    Transforma la columna location a WKT POINT (lon lat) si está disponible
-    Esit se realiza para estructurar correctamente los datos antes de insertarlos o exportarlos.   """
-
+    """
     try:
         response = requests.get(API_URL)
         response.raise_for_status()
@@ -199,7 +213,6 @@ def obtener_datos():
     
     df = pd.DataFrame(traffic_data)
     df.columns = df.columns.str.lower()
-    df['crash_date'] = pd.to_datetime(df['crash_date'], errors='coerce')
     return df
 
 

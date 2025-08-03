@@ -273,7 +273,7 @@ def main(path: str):
                 # === EL endpoint es el que se usa para subir a COS y debe ser PUBLICO ===
                 ENDPOINT = "https://s3.us-south.cloud-object-storage.appdomain.cloud"
                 # === Carpeta donde guardar los archivos en COS ===
-                CARPETA_DESTINO = "data/chicagos/people"
+                CARPETA_DESTINO = "Chicago/People"
                 # ============================================================
                 subir_a_cos(ruta_csv, BUCKET, NOMBRE_OBJETO, APIKEY, RESOURCE_INSTANCE_ID, ENDPOINT, CARPETA_DESTINO)
             else:
