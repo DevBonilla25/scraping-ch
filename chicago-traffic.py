@@ -143,7 +143,10 @@ def insert_all_to_database(df, table_name):
 
     except Exception as e:
         print(f"Error al insertar en la base de datos: {e}")
+        conn.rollback()
         return 0
+    finally:
+        conn.close()
 
 def insert_db_full_crashes(path):
     ruta_txt = os.path.join(path, "csv_path_traffic.txt")
@@ -243,19 +246,7 @@ def guardar_csv(df, path, fecha):
         return None
 
 
-def subir_a_cos(ruta_archivo, bucket, nombre_objeto, apikey, resource_instance_id, endpoint, carpeta_destino="Chicago/Traffic"):
-    """
-    Sube un archivo a IBM Cloud Object Storage en una carpeta específica.
-    
-    Args:
-        ruta_archivo: Ruta local del archivo a subir
-        bucket: Nombre del bucket en COS
-        nombre_objeto: Nombre del archivo en COS
-        apikey: API key de IBM Cloud
-        resource_instance_id: ID de la instancia de COS
-        endpoint: Endpoint de COS
-        carpeta_destino: Ruta de la carpeta donde guardar (por defecto: Chicago/Traffic)
-    """
+def subir_a_cos(ruta_archivo, bucket, nombre_objeto, apikey, resource_instance_id, endpoint):
     try:
         print("Intentando subir a COS...")
         cos = ibm_boto3.client("s3",
@@ -264,20 +255,11 @@ def subir_a_cos(ruta_archivo, bucket, nombre_objeto, apikey, resource_instance_i
             config=Config(signature_version="oauth"),
             endpoint_url=endpoint
         )
-        
-        # Construir la ruta completa en COS (carpeta/archivo)
-        ruta_completa = f"{carpeta_destino}/{nombre_objeto}"
-        
-        # Subir el archivo directamente
         with open(ruta_archivo, "rb") as archivo:
-            cos.upload_fileobj(archivo, bucket, ruta_completa)
-        
-        print(f"Archivo subido a COS: {ruta_completa}")
-        return True
-        
+            cos.upload_fileobj(archivo, bucket, nombre_objeto)
+        print(f"Archivo subido a COS: {nombre_objeto}")
     except Exception as e:
         print(f"Problemas al subir a COS: {e}")
-        return False
 
 
 def main(path: str):
@@ -308,8 +290,8 @@ def main(path: str):
                 RESOURCE_INSTANCE_ID = "crn:v1:bluemix:public:cloud-object-storage:global:a/a0d311a778b1491bbc7dab0f8108ec44:9510a7ed-4816-41c7-b7a2-7d63a9f6113f::"
                 # === EL endpoint es el que se usa para subir a COS y debe ser PUBLICO ===
                 ENDPOINT = "https://s3.us-south.cloud-object-storage.appdomain.cloud"
-                
-                subir_a_cos(ruta_csv, BUCKET, NOMBRE_OBJETO, APIKEY, RESOURCE_INSTANCE_ID, ENDPOINT, CARPETA_DESTINO)
+                # ============================================================
+                subir_a_cos(ruta_csv, BUCKET, NOMBRE_OBJETO, APIKEY, RESOURCE_INSTANCE_ID, ENDPOINT)
             else:
                 print("No se pudo guardar el archivo CSV.")
         else:
