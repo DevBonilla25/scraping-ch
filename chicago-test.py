@@ -7,9 +7,105 @@ import os
 import ibm_boto3
 from ibm_botocore.client import Config
 
+# Configuración de la base de datos PostgreSQL
+DB_HOST = os.getenv('DB_HOST', 'd29570ba-3bb2-43fb-b331-723ad28c0b1d.2adb0220806343e3ae11df79c89b377f.databases.appdomain.cloud')
+DB_PORT = os.getenv('DB_PORT', '30751')
+DB_NAME = os.getenv('DB_NAME', 'ibmclouddb')
+DB_USER = os.getenv('DB_USER', 'ibm_cloud_7c554210_3e0c_4caf_8564_920105f30e77')
+DB_PASSWORD = os.getenv('DB_PASSWORD', 'pg3R1f6p9kTOyDX6Izq53Th3eP5n9wIY')
 
 API_URL = "https://data.cityofchicago.org/resource/u6pd-qa9d.json"
-TABLE_NAME = 'chicago-tabledb'
+TABLE_NAME = 'chicago_crashes_people'
+
+# Definición de tipos SQL para las columnas
+SQL_TYPES = {
+    'crash_date': 'TIMESTAMP',
+    'age': 'INTEGER',
+    'person_num': 'INTEGER',
+    'ems_response_time': 'INTEGER',
+    'ems_transport_time': 'INTEGER',
+    'ems_hospital_time': 'INTEGER',
+    'bac_result_value': 'DECIMAL(5,3)',
+}
+
+def obtener_conexion_db():
+    """Establece conexión con la base de datos PostgreSQL."""
+    try:
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            port=DB_PORT,
+            database=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD
+        )
+        return conn
+    except Exception as e:
+        print(f"Error al conectar con la base de datos: {e}")
+        return None
+
+def insert_all_to_database(df, table_name):
+    """
+    Inserta todos los registros del DataFrame en la base de datos.
+    Crea la tabla si no existe.
+    """
+    if df.empty:
+        print("No hay datos para insertar.")
+        return 0
+
+    conn = obtener_conexion_db()
+    if not conn:
+        print("No se pudo establecer conexión con la base de datos.")
+        return 0
+
+    df.columns = df.columns.str.lower()
+    columns = df.columns.tolist()
+
+    fields_list = []
+    for col in columns:
+        col_type = SQL_TYPES.get(col, 'TEXT')
+        fields_list.append(sql.SQL(f"{col} {col_type}"))
+
+    create_table_query = sql.SQL(
+        "CREATE TABLE IF NOT EXISTS {table} ({fields})"
+    ).format(
+        table=sql.Identifier(table_name),
+        fields=sql.SQL(', ').join(fields_list)
+    )
+
+    inserted_count = 0
+    try:
+        with conn.cursor() as cur:
+            cur.execute(create_table_query)
+            conn.commit()
+
+            insert_query = sql.SQL(
+                """
+                INSERT INTO {table} ({fields}) VALUES ({placeholders})
+                """
+            ).format(
+                table=sql.Identifier(table_name),
+                fields=sql.SQL(', ').join(map(sql.Identifier, columns)),
+                placeholders=sql.SQL(', ').join(sql.Placeholder() * len(columns))
+            )
+
+            values = [
+                tuple(None if pd.isna(val) else val for val in row)
+                for row in df.itertuples(index=False, name=None)
+            ]
+
+            extras.execute_batch(cur, insert_query, values)
+            inserted_count = len(values)
+            conn.commit()
+
+        print(f"Se insertaron {inserted_count} registros en la base de datos.")
+        return inserted_count
+
+    except Exception as e:
+        print(f"Error al insertar en la base de datos: {e}")
+        conn.rollback()
+        return 0
+    finally:
+        conn.close()
 
 def obtener_datos():
     """
@@ -111,24 +207,30 @@ def main(path: str):
     print("Obteniendo todos los datos disponibles de la API...")
     df = obtener_datos()
     if not df.empty:
-        # inserted = insert_to_database(df)
-        ruta_csv = guardar_csv(df, path, datetime.now())
-        if ruta_csv:
-            ruta_txt = os.path.join(path, 'csv_path_people.txt')
-            with open(ruta_txt, 'w') as f:
-                f.write(ruta_csv + '\n')
-                print("Ruta de csv guardado en text.")
-            # === Parámetros de acceso a IBM COS (rellena con tus datos) ===
-            BUCKET = "bucket-rel8ed"
-            NOMBRE_OBJETO = os.path.basename(ruta_csv)
-            APIKEY = "xv7bbYwNNuBMWqunqtY8hnq0xoKc7ENwb4HN7hkYLvyJ"
-            RESOURCE_INSTANCE_ID = "crn:v1:bluemix:public:cloud-object-storage:global:a/a0d311a778b1491bbc7dab0f8108ec44:9510a7ed-4816-41c7-b7a2-7d63a9f6113f::"
-            # === EL endpoint es el que se usa para subir a COS y debe ser PUBLICO ===
-            ENDPOINT = "https://s3.us-south.cloud-object-storage.appdomain.cloud"
-            # ============================================================
-            subir_a_cos(ruta_csv, BUCKET, NOMBRE_OBJETO, APIKEY, RESOURCE_INSTANCE_ID, ENDPOINT)
+        # Insertar datos en la base de datos
+        inserted_count = insert_all_to_database(df, TABLE_NAME)
+        
+        # Guardar CSV solo si se insertaron datos
+        if inserted_count > 0:
+            ruta_csv = guardar_csv(df, path, datetime.now())
+            if ruta_csv:
+                ruta_txt = os.path.join(path, 'csv_path_people.txt')
+                with open(ruta_txt, 'w') as f:
+                    f.write(ruta_csv + '\n')
+                    print("Ruta de csv guardado en text.")
+                # === Parámetros de acceso a IBM COS (rellena con tus datos) ===
+                BUCKET = "bucket-rel8ed"
+                NOMBRE_OBJETO = os.path.basename(ruta_csv)
+                APIKEY = "xv7bbYwNNuBMWqunqtY8hnq0xoKc7ENwb4HN7hkYLvyJ"
+                RESOURCE_INSTANCE_ID = "crn:v1:bluemix:public:cloud-object-storage:global:a/a0d311a778b1491bbc7dab0f8108ec44:9510a7ed-4816-41c7-b7a2-7d63a9f6113f::"
+                # === EL endpoint es el que se usa para subir a COS y debe ser PUBLICO ===
+                ENDPOINT = "https://s3.us-south.cloud-object-storage.appdomain.cloud"
+                # ============================================================
+                subir_a_cos(ruta_csv, BUCKET, NOMBRE_OBJETO, APIKEY, RESOURCE_INSTANCE_ID, ENDPOINT)
+            else:
+                print("No se pudo guardar el archivo CSV.")
         else:
-            print("No hay datos nuevos para guardar en CSV.")
+            print("No se insertaron nuevos registros en la base de datos.")
     else:
         print("No se encontraron datos en la API o ocurrió un error.")
 
