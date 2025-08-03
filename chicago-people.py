@@ -45,8 +45,8 @@ def obtener_conexion_db():
 
 def insert_all_to_database(df, table_name):
     """
-    Inserta todos los registros del DataFrame en la base de datos.
-    Crea la tabla si no existe.
+    Inserta registros del DataFrame en la base de datos, evitando duplicados.
+    Crea la tabla si no existe y valida registros existentes.
     """
     if df.empty:
         print("No hay datos para insertar.")
@@ -78,27 +78,71 @@ def insert_all_to_database(df, table_name):
             cur.execute(create_table_query)
             conn.commit()
 
-            insert_query = sql.SQL(
-                """
-                INSERT INTO {table} ({fields}) VALUES ({placeholders})
-                """
-            ).format(
-                table=sql.Identifier(table_name),
-                fields=sql.SQL(', ').join(map(sql.Identifier, columns)),
-                placeholders=sql.SQL(', ').join(sql.Placeholder() * len(columns))
-            )
+            # Verificar registros existentes basándose en crash_record_id y person_id
+            if 'crash_record_id' in df.columns and 'person_id' in df.columns:
+                existing_records = set()
+                cur.execute(sql.SQL("SELECT crash_record_id, person_id FROM {}").format(sql.Identifier(table_name)))
+                for row in cur.fetchall():
+                    existing_records.add((row[0], row[1]))
+                
+                # Filtrar solo registros nuevos
+                df['record_key'] = df['crash_record_id'].astype(str) + '_' + df['person_id'].astype(str)
+                existing_keys = set([f"{crash_id}_{person_id}" for crash_id, person_id in existing_records])
+                new_records = df[~df['record_key'].isin(existing_keys)]
+                new_records = new_records.drop('record_key', axis=1)
+                
+                if new_records.empty:
+                    print("No hay nuevos registros para insertar.")
+                    return 0
+                
+                print(f"Se encontraron {len(df)} registros totales, {len(new_records)} son nuevos.")
+                
+                # Insertar solo registros nuevos
+                insert_query = sql.SQL(
+                    """
+                    INSERT INTO {table} ({fields}) VALUES ({placeholders})
+                    """
+                ).format(
+                    table=sql.Identifier(table_name),
+                    fields=sql.SQL(', ').join(map(sql.Identifier, columns)),
+                    placeholders=sql.SQL(', ').join(sql.Placeholder() * len(columns))
+                )
 
-            values = [
-                tuple(None if pd.isna(val) else val for val in row)
-                for row in df.itertuples(index=False, name=None)
-            ]
+                values = [
+                    tuple(None if pd.isna(val) else val for val in row)
+                    for row in new_records.itertuples(index=False, name=None)
+                ]
 
-            extras.execute_batch(cur, insert_query, values)
-            inserted_count = len(values)
-            conn.commit()
+                extras.execute_batch(cur, insert_query, values)
+                inserted_count = len(values)
+                conn.commit()
 
-        print(f"Se insertaron {inserted_count} registros en la base de datos.")
-        return inserted_count
+                print(f"Se insertaron {inserted_count} registros nuevos en la base de datos.")
+                return inserted_count
+            else:
+                print("No se encontraron crash_record_id o person_id en los datos. Insertando todos los registros.")
+                # Fallback: insertar todos si no hay identificadores únicos
+                insert_query = sql.SQL(
+                    """
+                    INSERT INTO {table} ({fields}) VALUES ({placeholders})
+                    """
+                ).format(
+                    table=sql.Identifier(table_name),
+                    fields=sql.SQL(', ').join(map(sql.Identifier, columns)),
+                    placeholders=sql.SQL(', ').join(sql.Placeholder() * len(columns))
+                )
+
+                values = [
+                    tuple(None if pd.isna(val) else val for val in row)
+                    for row in df.itertuples(index=False, name=None)
+                ]
+
+                extras.execute_batch(cur, insert_query, values)
+                inserted_count = len(values)
+                conn.commit()
+
+                print(f"Se insertaron {inserted_count} registros en la base de datos.")
+                return inserted_count
 
     except Exception as e:
         print(f"Error al insertar en la base de datos: {e}")
