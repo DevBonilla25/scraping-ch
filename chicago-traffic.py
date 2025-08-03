@@ -84,7 +84,7 @@ def obtener_conexion_db():
 
 def insert_all_to_database(df, table_name):
     """
-    Inserta todos los registros del DataFrame en la base de datos.
+    Inserta todos los registros del DataFrame en la base de datos, sin filtrar duplicados.
     Crea la tabla si no existe.
     """
     if df.empty:
