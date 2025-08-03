@@ -83,22 +83,6 @@ def obtener_conexion_db():
         return None
 
 
-def obtener_conexion_db():
-    """Establece conexión con la base de datos PostgreSQL."""
-    try:
-        conn = psycopg2.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            database=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD
-        )
-        return conn
-    except Exception as e:
-        print(f"Error al conectar con la base de datos: {e}")
-        return None
-
-
 def insert_all_to_database(df, table_name):
     """
     Inserta todos los registros del DataFrame en la base de datos, sin filtrar duplicados.
@@ -291,32 +275,36 @@ def main(path: str):
     print("Obteniendo todos los datos disponibles de la API...")
     df = obtener_datos()
     if not df.empty:
-        # Insertar datos en la base de datos
-        inserted_count = insert_all_to_database(df, TABLE_NAME)
+        print(f"Se obtuvieron {len(df)} registros de la API.")
         
-        # Guardar CSV solo si se insertaron datos
-        if inserted_count > 0:
-            ruta_csv = guardar_csv(df, path, datetime.now())
-            if ruta_csv:
-                ruta_txt = os.path.join(path, 'csv_path_traffic.txt')
-                with open(ruta_txt, 'w') as f:
-                    f.write(ruta_csv + '\n')
-                    print("Ruta de csv guardado en text.")
-                
-                # Subir a IBM COS
-                # === Parámetros de acceso a IBM COS ===
-                BUCKET = "bucket-rel8ed"
-                NOMBRE_OBJETO = os.path.basename(ruta_csv)
-                APIKEY = "xv7bbYwNNuBMWqunqtY8hnq0xoKc7ENwb4HN7hkYLvyJ"
-                RESOURCE_INSTANCE_ID = "crn:v1:bluemix:public:cloud-object-storage:global:a/a0d311a778b1491bbc7dab0f8108ec44:9510a7ed-4816-41c7-b7a2-7d63a9f6113f::"
-                # === EL endpoint es el que se usa para subir a COS y debe ser PUBLICO ===
-                ENDPOINT = "https://s3.us-south.cloud-object-storage.appdomain.cloud"
-                # ============================================================
-                subir_a_cos(ruta_csv, BUCKET, NOMBRE_OBJETO, APIKEY, RESOURCE_INSTANCE_ID, ENDPOINT)
+        # Guardar CSV siempre que haya datos
+        ruta_csv = guardar_csv(df, path, datetime.now())
+        if ruta_csv:
+            ruta_txt = os.path.join(path, 'csv_path_traffic.txt')
+            with open(ruta_txt, 'w') as f:
+                f.write(ruta_csv + '\n')
+                print("Ruta de csv guardado en text.")
+            
+            # Subir a IBM COS
+            # === Parámetros de acceso a IBM COS ===
+            BUCKET = "bucket-rel8ed"
+            NOMBRE_OBJETO = os.path.basename(ruta_csv)
+            APIKEY = "xv7bbYwNNuBMWqunqtY8hnq0xoKc7ENwb4HN7hkYLvyJ"
+            RESOURCE_INSTANCE_ID = "crn:v1:bluemix:public:cloud-object-storage:global:a/a0d311a778b1491bbc7dab0f8108ec44:9510a7ed-4816-41c7-b7a2-7d63a9f6113f::"
+            # === EL endpoint es el que se usa para subir a COS y debe ser PUBLICO ===
+            ENDPOINT = "https://s3.us-south.cloud-object-storage.appdomain.cloud"
+            # ============================================================
+            subir_a_cos(ruta_csv, BUCKET, NOMBRE_OBJETO, APIKEY, RESOURCE_INSTANCE_ID, ENDPOINT)
+            
+            # Insertar datos en la base de datos
+            print("Insertando datos en la base de datos...")
+            inserted_count = insert_all_to_database(df, TABLE_NAME)
+            if inserted_count > 0:
+                print(f"Se insertaron {inserted_count} registros en la base de datos.")
             else:
-                print("No se pudo guardar el archivo CSV.")
+                print("No se pudieron insertar registros en la base de datos.")
         else:
-            print("No se insertaron nuevos registros en la base de datos.")
+            print("No se pudo guardar el archivo CSV.")
     else:
         print("No se encontraron datos en la API o ocurrió un error.")
 
