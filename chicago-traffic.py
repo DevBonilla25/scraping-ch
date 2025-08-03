@@ -17,6 +17,35 @@ DB_PASSWORD = os.getenv('DB_PASSWORD', 'pg3R1f6p9kTOyDX6Izq53Th3eP5n9wIY')
 API_URL = "https://data.cityofchicago.org/resource/85ca-t3if.json"
 TABLE_NAME = 'chicago_crashes_traffic'
 
+# Definición de tipos SQL para las columnas
+SQL_TYPES = {
+    'crash_date': 'TIMESTAMP',
+    'date_police_notified': 'TIMESTAMP',
+    'posted_speed_limit': 'INTEGER',
+    'num_units': 'INTEGER',
+    'injuries_total': 'INTEGER',
+    'injuries_fatal': 'INTEGER',
+    'injuries_incapacitating': 'INTEGER',
+    'injuries_non_incapacitating': 'INTEGER',
+    'injuries_reported_not_evident': 'INTEGER',
+    'injuries_no_indication': 'INTEGER',
+    'injuries_unknown': 'INTEGER',
+    'crash_hour': 'INTEGER',
+    'crash_day_of_week': 'INTEGER',
+    'crash_month': 'INTEGER',
+    'latitude': 'DECIMAL(10,8)',
+    'longitude': 'DECIMAL(11,8)',
+    'street_no': 'INTEGER',
+    'beat_of_occurrence': 'INTEGER',
+    'photos_taken_i': 'BOOLEAN',
+    'statements_taken_i': 'BOOLEAN',
+    'dooring_i': 'BOOLEAN',
+    'work_zone_i': 'BOOLEAN',
+    'workers_present_i': 'BOOLEAN',
+    'intersection_related_i': 'BOOLEAN',
+    'hit_and_run_i': 'BOOLEAN',
+}
+
 def obtener_conexion_db():
     """Establece conexión con la base de datos PostgreSQL."""
     try:
@@ -286,7 +315,7 @@ def main(path: str):
                 # === EL endpoint es el que se usa para subir a COS y debe ser PUBLICO ===
                 ENDPOINT = "https://s3.us-south.cloud-object-storage.appdomain.cloud"
                 # === Carpeta donde guardar los archivos en COS ===
-                CARPETA_DESTINO = "data/chicagos/traffic"
+                CARPETA_DESTINO = "Chicago/Traffic"
                 # ============================================================
                 subir_a_cos(ruta_csv, BUCKET, NOMBRE_OBJETO, APIKEY, RESOURCE_INSTANCE_ID, ENDPOINT, CARPETA_DESTINO)
             else:
