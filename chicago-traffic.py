@@ -159,9 +159,13 @@ def insert_db_full_crashes(path):
 
 def obtener_datos():
     """
-    Consulta la API de accidentes y transforma la respuesta JSON en un DataFrame.
-    Usa el mismo enfoque que funciona en local: crear DataFrame directamente desde JSON.
+    Obtiene datos desde la API de accidentes de tráfico y los convierte en DataFrame normalizado.
+    Hace una solicitud GET
+    Extrae y transforma los campos necesarios
+    Normaliza las columnas a minúsculas
+    Convierte crash_date a tipo datetime
     """
+    
     try:
         response = requests.get(API_URL)
         response.raise_for_status()
@@ -169,17 +173,70 @@ def obtener_datos():
     except Exception as e:
         print(f"Error al obtener datos de la API: {e}")
         return pd.DataFrame()
-    
-    # Crear DataFrame directamente desde la respuesta JSON
-    # Esto es más eficiente y maneja automáticamente los tipos de datos
-    df = pd.DataFrame(data)
-    
-    # Filtrar solo registros con crash_record_id
-    if not df.empty and 'crash_record_id' in df.columns:
-        df = df[df['crash_record_id'].notna()]
-    
-    # Convertir columnas a minúsculas
+
+    # Procesar y estructurar los datos de accidentes de tráfico
+    traffic_data = [
+        {
+            'crash_record_id': item.get('crash_record_id'),
+            'crash_date': item.get('crash_date'),
+            'posted_speed_limit': item.get('posted_speed_limit'),
+            'traffic_control_device': item.get('traffic_control_device'),
+            'device_condition': item.get('device_condition'),
+            'weather_condition': item.get('weather_condition'),
+            'lighting_condition': item.get('lighting_condition'),
+            'first_crash_type': item.get('first_crash_type'),
+            'trafficway_type': item.get('trafficway_type'),
+            'alignment': item.get('alignment'),
+            'roadway_surface_cond': item.get('roadway_surface_cond'),
+            'road_defect': item.get('road_defect'),
+            'crash_type': item.get('crash_type'),
+            'intersection_related_i': item.get('intersection_related_i'),
+            'hit_and_run_i': item.get('hit_and_run_i'),
+            'damage': item.get('damage'),
+            'prim_contributory_cause': item.get('prim_contributory_cause'),
+            'sec_contributory_cause': item.get('sec_contributory_cause'),
+            'street_no': item.get('street_no'),
+            'street_direction': item.get('street_direction'),
+            'street_name': item.get('street_name'),
+            'beat_of_occurrence': item.get('beat_of_occurrence'),
+            'photos_taken_i': item.get('photos_taken_i'),
+            'statements_taken_i': item.get('statements_taken_i'),
+            'dooring_i': item.get('dooring_i'),
+            'work_zone_i': item.get('work_zone_i'),
+            'work_zone_type': item.get('work_zone_type'),
+            'workers_present_i': item.get('workers_present_i'),
+            'num_units': item.get('num_units'),
+            'most_severe_injury': item.get('most_severe_injury'),
+            'injuries_total': item.get('injuries_total'),
+            'injuries_fatal': item.get('injuries_fatal'),
+            'injuries_incapacitating': item.get('injuries_incapacitating'),
+            'injuries_non_incapacitating': item.get('injuries_non_incapacitating'),
+            'injuries_reported_not_evident': item.get('injuries_reported_not_evident'),
+            'injuries_no_indication': item.get('injuries_no_indication'),
+            'injuries_unknown': item.get('injuries_unknown'),
+            'crash_hour': item.get('crash_hour'),
+            'crash_day_of_week': item.get('crash_day_of_week'),
+            'crash_month': item.get('crash_month'),
+            'latitude': item.get('latitude'),
+            'longitude': item.get('longitude'),
+            'location': item.get('location'),
+            'report_type': item.get('report_type'),
+            'date_police_notified': item.get('date_police_notified')
+        }
+        for item in data
+        if item.get('crash_record_id')
+    ]
+
+    df = pd.DataFrame(traffic_data)
     df.columns = df.columns.str.lower()
+    
+    # Convertir crash_date a datetime si existe
+    if 'crash_date' in df.columns:
+        df['crash_date'] = pd.to_datetime(df['crash_date'], errors='coerce')
+    
+    # Convertir date_police_notified a datetime si existe
+    if 'date_police_notified' in df.columns:
+        df['date_police_notified'] = pd.to_datetime(df['date_police_notified'], errors='coerce')
     
     return df
 
