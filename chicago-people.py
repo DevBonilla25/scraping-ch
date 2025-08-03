@@ -182,7 +182,20 @@ def guardar_csv(df, path, fecha):
         print(f"Problemas al guardar CSV: {e}")
         return None
 
-def subir_a_cos(ruta_archivo, bucket, nombre_objeto, apikey, resource_instance_id, endpoint):
+def subir_a_cos(ruta_archivo, bucket, nombre_objeto, apikey, resource_instance_id, endpoint, carpeta_destino="Chicago/People"):
+    """
+    Sube un archivo a IBM Cloud Object Storage en una carpeta específica.
+    Si la carpeta no existe, la crea automáticamente.
+    
+    Args:
+        ruta_archivo: Ruta local del archivo a subir
+        bucket: Nombre del bucket en COS
+        nombre_objeto: Nombre del archivo en COS
+        apikey: API key de IBM Cloud
+        resource_instance_id: ID de la instancia de COS
+        endpoint: Endpoint de COS
+        carpeta_destino: Ruta de la carpeta donde guardar (por defecto: Chicago/People)
+    """
     try:
         print("Intentando subir a COS...")
         cos = ibm_boto3.client("s3",
@@ -191,11 +204,45 @@ def subir_a_cos(ruta_archivo, bucket, nombre_objeto, apikey, resource_instance_i
             config=Config(signature_version="oauth"),
             endpoint_url=endpoint
         )
+        
+        # Construir la ruta completa en COS (carpeta/archivo)
+        ruta_completa = f"{carpeta_destino}/{nombre_objeto}"
+        
+        # Verificar si la carpeta existe, si no, crearla
+        try:
+            # Intentar listar objetos en la carpeta para verificar si existe
+            response = cos.list_objects_v2(
+                Bucket=bucket,
+                Prefix=f"{carpeta_destino}/",
+                MaxKeys=1
+            )
+            
+            # Si no hay objetos en la carpeta, crear un archivo vacío para "crear" la carpeta
+            if 'Contents' not in response or len(response['Contents']) == 0:
+                print(f"Creando carpeta '{carpeta_destino}' en COS...")
+                cos.put_object(
+                    Bucket=bucket,
+                    Key=f"{carpeta_destino}/.keep",
+                    Body=""
+                )
+                print(f"Carpeta '{carpeta_destino}' creada exitosamente.")
+            else:
+                print(f"Carpeta '{carpeta_destino}' ya existe en COS.")
+                
+        except Exception as e:
+            print(f"Error al verificar/crear carpeta: {e}")
+            # Continuar con la subida del archivo de todas formas
+        
+        # Subir el archivo a la carpeta especificada
         with open(ruta_archivo, "rb") as archivo:
-            cos.upload_fileobj(archivo, bucket, nombre_objeto)
-        print(f"Archivo subido a COS: {nombre_objeto}")
+            cos.upload_fileobj(archivo, bucket, ruta_completa)
+        
+        print(f"Archivo subido a COS: {ruta_completa}")
+        return True
+        
     except Exception as e:
         print(f"Problemas al subir a COS: {e}")
+        return False
 
 def main(path: str):
     """Ejecuta el flujo principal: descarga de datos, inserción en la base, y guardado como CSV si hay nuevos registros.
@@ -225,8 +272,10 @@ def main(path: str):
                 RESOURCE_INSTANCE_ID = "crn:v1:bluemix:public:cloud-object-storage:global:a/a0d311a778b1491bbc7dab0f8108ec44:9510a7ed-4816-41c7-b7a2-7d63a9f6113f::"
                 # === EL endpoint es el que se usa para subir a COS y debe ser PUBLICO ===
                 ENDPOINT = "https://s3.us-south.cloud-object-storage.appdomain.cloud"
+                # === Carpeta donde guardar los archivos en COS ===
+                CARPETA_DESTINO = "data/chicagos/people"
                 # ============================================================
-                subir_a_cos(ruta_csv, BUCKET, NOMBRE_OBJETO, APIKEY, RESOURCE_INSTANCE_ID, ENDPOINT)
+                subir_a_cos(ruta_csv, BUCKET, NOMBRE_OBJETO, APIKEY, RESOURCE_INSTANCE_ID, ENDPOINT, CARPETA_DESTINO)
             else:
                 print("No se pudo guardar el archivo CSV.")
         else:
